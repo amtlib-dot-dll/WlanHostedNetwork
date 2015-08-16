@@ -3,6 +3,6 @@
 #include <Windows.h>
 #include <strsafe.h>
 #include <wlanapi.h>
+#include <string>
 #include <memory>
-#include <functional>
 #include "resource.h"

@@ -5,6 +5,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	non_client_metrics.cbSize = sizeof(NONCLIENTMETRICS);
 	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &non_client_metrics, 0);
 	static auto font_handle = CreateFontIndirect(&non_client_metrics.lfStatusFont);
+	DWORD dwNegotiatedVersion;
+	static HANDLE hClientHandle;
+	WlanOpenHandle(WLAN_API_VERSION, nullptr, &dwNegotiatedVersion, &hClientHandle);
+	static WLAN_HOSTED_NETWORK_REASON failReason;
+	WlanHostedNetworkInitSettings(hClientHandle, &failReason, nullptr);
 	WNDCLASS window_class;
 	window_class.lpszClassName = TEXT("WlanHostedNetwork") ;
 	window_class.hInstance = hInstance;
@@ -17,70 +22,68 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	window_class.lpszMenuName = nullptr;
 	window_class.lpfnWndProc = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)->LRESULT {
 		static HWND button_handle;
-		static HWND edit_handle;
 		switch (uMsg) {
 			case WM_CREATE: {
+				PWLAN_HOSTED_NETWORK_STATUS pWlanHostedNetworkStatus = nullptr;
+				WlanHostedNetworkQueryStatus(hClientHandle, &pWlanHostedNetworkStatus, nullptr);
+				UINT uID;
+				switch (pWlanHostedNetworkStatus->HostedNetworkState) {
+					case wlan_hosted_network_active:
+						uID = IDS_HOTSPOT_RUNNING;
+						break;
+					case wlan_hosted_network_idle:
+						uID = IDS_HOTSPOT_STOPPED;
+						break;
+					case wlan_hosted_network_unavailable:
+						uID = IDS_HOTSPOT_ERROR;
+						break;
+				}
 				LPTSTR pool = nullptr;
-				std::wstring string(pool, LoadString(reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)), IDS_STRING103, reinterpret_cast<LPTSTR>(&pool), 0));
+				std::wstring string(pool, LoadString(reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)), uID, reinterpret_cast<LPTSTR>(&pool), 0));
+				RECT client_rect;
+				GetClientRect(hWnd, &client_rect);
 				button_handle = CreateWindow(
 					TEXT("BUTTON"),
 					string.c_str(),
 					WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-					10,
-					40,
-					700,
-					non_client_metrics.iCaptionHeight,
+					client_rect.left,
+					client_rect.top,
+					client_rect.right - client_rect.left,
+					client_rect.bottom - client_rect.top,
 					hWnd,
 					nullptr,
 					reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)),
 					nullptr);
 				SendMessage(button_handle, WM_SETFONT, reinterpret_cast<WPARAM>(font_handle), 0);
-				edit_handle = CreateWindow(
-					TEXT("EDIT"),
-					nullptr,
-					WS_CHILD | WS_VISIBLE | WS_BORDER,
-					10,
-					10,
-					700,
-					non_client_metrics.iCaptionHeight,
-					hWnd,
-					nullptr,
-					reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)),
-					nullptr);
-				SendMessage(edit_handle, WM_SETFONT, reinterpret_cast<WPARAM>(font_handle), 0);
+				if (uID == IDS_HOTSPOT_ERROR) {
+					EnableWindow(button_handle, false);
+				}
+				WlanFreeMemory(pWlanHostedNetworkStatus);
 				return 0;
 			}
 			case WM_COMMAND:
 				if (lParam == reinterpret_cast<LPARAM>(button_handle)) {
-					DWORD dwNegotiatedVersion;
-					HANDLE hClientHandle;
-					WlanOpenHandle(WLAN_API_VERSION, nullptr, &dwNegotiatedVersion, &hClientHandle);
-					WLAN_HOSTED_NETWORK_REASON failReason;
-					WlanHostedNetworkInitSettings(hClientHandle, &failReason, nullptr);
-					DWORD dwKeyLength;
-					UCHAR* pucKeyData;
-					BOOL bIsPassPhrase;
-					BOOL bPersistent;
-					WlanHostedNetworkQuerySecondaryKey(
-						hClientHandle,
-						&dwKeyLength,
-						&pucKeyData,
-						&bIsPassPhrase,
-						&bPersistent,
-						&failReason,
-						nullptr);
-					if (bIsPassPhrase) {
-						auto length = MultiByteToWideChar(CP_ACP, 0, reinterpret_cast<LPCCH>(pucKeyData), -1, nullptr, 0);
-						auto buffer = std::make_unique<WCHAR[]>(length);
-						MultiByteToWideChar(CP_ACP, 0, reinterpret_cast<LPCCH>(pucKeyData), -1, buffer.get(), length);
-						SendMessage(edit_handle, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(buffer.get()));
-						WlanFreeMemory(pucKeyData);
-						WlanCloseHandle(hClientHandle, nullptr);
-					} else {
-						LPTSTR pool = nullptr;
-						std::wstring string(pool, LoadString(reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)), IDS_STRING102, reinterpret_cast<LPTSTR>(&pool), 0));
-						SendMessage(edit_handle, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string.c_str()));
+					PWLAN_HOSTED_NETWORK_STATUS pWlanHostedNetworkStatus = nullptr;
+					WlanHostedNetworkQueryStatus(hClientHandle, &pWlanHostedNetworkStatus, nullptr);
+					UINT uID;
+					switch (pWlanHostedNetworkStatus->HostedNetworkState) {
+						case wlan_hosted_network_active:
+							uID = IDS_HOTSPOT_STOPPED;
+							WlanHostedNetworkForceStop(hClientHandle, &failReason, nullptr);
+							break;
+						case wlan_hosted_network_idle:
+							uID = IDS_HOTSPOT_RUNNING;
+							WlanHostedNetworkForceStart(hClientHandle, &failReason, nullptr);
+							break;
+						case wlan_hosted_network_unavailable:
+							uID = IDS_HOTSPOT_ERROR;
+							EnableWindow(button_handle, false);
+							break;
 					}
+					LPTSTR pool = nullptr;
+					std::wstring string(pool, LoadString(reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)), uID, reinterpret_cast<LPTSTR>(&pool), 0));
+					SendMessage(button_handle, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string.c_str()));
+					WlanFreeMemory(pWlanHostedNetworkStatus);
 					return 0;
 				} else {
 					return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -93,7 +96,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		}
 	};
 	LPTSTR pool = nullptr;
-	std::wstring string(pool, LoadString(hInstance, IDS_STRING101, reinterpret_cast<LPTSTR>(&pool), 0));
+	std::wstring string(pool, LoadString(hInstance, IDS_WINDOW_CAPTION, reinterpret_cast<LPTSTR>(&pool), 0));
 	CreateWindow(
 		reinterpret_cast<LPCTSTR>(RegisterClass(&window_class)),
 		string.c_str(),
@@ -101,7 +104,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		220,
 		220,
 		750,
-		350,
+		450,
 		nullptr,
 		nullptr,
 		hInstance,
@@ -112,5 +115,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		DispatchMessage(&msg);
 	}
 	DeleteObject(font_handle);
+	WlanCloseHandle(hClientHandle, nullptr);
 	return static_cast<int>(msg.wParam);
 }
