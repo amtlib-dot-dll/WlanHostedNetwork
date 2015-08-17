@@ -5,4 +5,7 @@
 #include <wlanapi.h>
 #include <string>
 #include <memory>
+#include <list>
+#include <unordered_map>
+#include <functional>
 #include "resource.h"

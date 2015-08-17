@@ -52,7 +52,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*';%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
-      <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>wlanapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -73,7 +73,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*';%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
-      <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>wlanapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -83,13 +83,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="MainApplication.cpp" />
+    <ClCompile Include="MainWindow.cpp" />
+    <ClCompile Include="SwitchButton.cpp" />
+    <ClCompile Include="WlanHostedNetworkAPIAgent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MainWindow.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="SwitchButton.h" />
+    <ClInclude Include="Utility.h" />
+    <ClInclude Include="WlanHostedNetworkAPIAgent.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WlanHostedNetworkNative.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="ico6400.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
