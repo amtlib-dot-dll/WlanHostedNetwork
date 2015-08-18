@@ -4,10 +4,9 @@
 #include "SwitchButton.h"
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd) {
-	using namespace WlanHostedNetwork;
-	auto& window = MainWindow::getInstance();
+	auto& window = WlanHostedNetwork::MainWindow::getInstance();
 	window.setHINSTANCE(hInstance);
-	new SwitchButton();
+	new WlanHostedNetwork::SwitchButton();
 	window.create();
-	return static_cast<int>(Utility::messageLoop().wParam);
+	return static_cast<int>(WlanHostedNetwork::Utility::messageLoop().wParam);
 }
