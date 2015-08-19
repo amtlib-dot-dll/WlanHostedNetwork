@@ -1,4 +1,4 @@
 # WlanHostedNetwork
-An implemention of `netsh wlan start/stop hostednetwork' via P/Invoke in C#
+An implemention of `netsh wlan start/stop hostednetwork' via P/Invoke in C# or pure WINAPI
 
-Some files that contain no code information but only personal information are not included
+Files containing no code information but only personal information are not included
