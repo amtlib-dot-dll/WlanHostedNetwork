@@ -3,29 +3,29 @@
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd) {
 	PVOID pDummy;
-	WNDCLASS window_class;
+	WNDCLASS wndClass;
 	int nLength;
 	LPTSTR lpBuffer;
 	MSG msg;
 	HWND hWnd;
 #pragma region Window Specification
-	window_class.lpszClassName = TEXT("WlanHostedNetwork");
-	window_class.hInstance = hInstance;
-	window_class.cbClsExtra = 0;
-	window_class.cbWndExtra = 3 * sizeof(LONG_PTR);
-	window_class.style = 0;
-	window_class.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LOGO));
-	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.hbrBackground = (HBRUSH)COLOR_WINDOW;
-	window_class.lpszMenuName = NULL;
-	window_class.lpfnWndProc = WindowProc;
+	wndClass.lpszClassName = TEXT("WlanHostedNetwork") ;
+	wndClass.hInstance = hInstance;
+	wndClass.cbClsExtra = 0;
+	wndClass.cbWndExtra = 3 * sizeof(LONG_PTR);
+	wndClass.style = 0;
+	wndClass.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LOGO));
+	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wndClass.hbrBackground = (HBRUSH)COLOR_WINDOW;
+	wndClass.lpszMenuName = NULL;
+	wndClass.lpfnWndProc = WindowProc;
 #pragma endregion
 #pragma region Window Creation
 	nLength = LoadString(hInstance, IDS_WINDOW_CAPTION, (LPTSTR)&pDummy, 0);
 	lpBuffer = HeapAlloc(GetProcessHeap(), 0, (nLength + 1) * sizeof(TCHAR));
 	LoadString(hInstance, IDS_WINDOW_CAPTION, lpBuffer, nLength + 1);
 	hWnd = CreateWindow(
-		(LPCWSTR)RegisterClass(&window_class),
+		(LPCWSTR)RegisterClass(&wndClass),
 		lpBuffer,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		220,
@@ -43,11 +43,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-	return msg.wParam;
+	return (int)msg.wParam;
 #pragma endregion 
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+#pragma region Declarations
 	PVOID pDummy;
 	HFONT hFont = (HFONT)GetWindowLongPtr(hWnd, 0);
 	HANDLE hClientHandle = (HANDLE)GetWindowLongPtr(hWnd, sizeof(LONG_PTR));
@@ -59,6 +60,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	int nLength;
 	RECT rect;
 	LPTSTR lpBuffer;
+#pragma endregion
 	switch (uMsg) {
 		case WM_CREATE:
 #pragma region Initialize font
@@ -79,9 +81,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 				TEXT("Segoe UI"));
 			SetWindowLongPtr(hWnd, 0, (LONG_PTR)hFont);
 #pragma endregion
+#pragma region WLAN API initialization
 			WlanOpenHandle(WLAN_API_VERSION, NULL, &dwNegotiatedVersion, &hClientHandle);
 			SetWindowLongPtr(hWnd, sizeof(LONG_PTR), (LONG_PTR)hClientHandle);
 			WlanHostedNetworkInitSettings(hClientHandle, &failReason, NULL);
+#pragma endregion
+#pragma region Query the status string
 			pWlanHostedNetworkStatus = NULL;
 			WlanHostedNetworkQueryStatus(hClientHandle, &pWlanHostedNetworkStatus, NULL);
 			switch (pWlanHostedNetworkStatus->HostedNetworkState) {
@@ -99,6 +104,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			nLength = LoadString((HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), uID, (LPTSTR)&pDummy, 0) + 1;
 			lpBuffer = HeapAlloc(GetProcessHeap(), 0, (nLength) * sizeof(TCHAR));
 			LoadString((HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), uID, lpBuffer, nLength);
+#pragma endregion
 			GetClientRect(hWnd, &rect);
 			hButton = CreateWindow(
 				TEXT("BUTTON"),
@@ -118,22 +124,29 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			return 0;
 		case WM_COMMAND:
 			if (lParam == (LPARAM)hButton) {
+#pragma region Query the status string
 				pWlanHostedNetworkStatus = NULL;
 				WlanHostedNetworkQueryStatus(hClientHandle, &pWlanHostedNetworkStatus, NULL);
 				switch (pWlanHostedNetworkStatus->HostedNetworkState) {
 					case wlan_hosted_network_active:
 						WlanHostedNetworkForceStop(hClientHandle, &failReason, NULL);
-						SendMessage(hButton, WM_SETTEXT, 0, IDS_HOTSPOT_STOPPED);
+						uID = IDS_HOTSPOT_STOPPED;
 						break;
 					case wlan_hosted_network_idle:
 						WlanHostedNetworkForceStart(hClientHandle, &failReason, NULL);
-						SendMessage(hButton, WM_SETTEXT, 0, IDS_HOTSPOT_RUNNING);
+						uID = IDS_HOTSPOT_RUNNING;
 						break;
 					case wlan_hosted_network_unavailable:
 					default:
-						SendMessage(hButton, WM_SETTEXT, 0, IDS_ERROR);
+						uID = IDS_ERROR;
 				}
 				WlanFreeMemory(pWlanHostedNetworkStatus);
+				nLength = LoadString((HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), uID, (LPTSTR)&pDummy, 0) + 1;
+				lpBuffer = HeapAlloc(GetProcessHeap(), 0, (nLength) * sizeof(TCHAR));
+				LoadString((HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), uID, lpBuffer, nLength);
+#pragma endregion
+				SetWindowText(hButton, lpBuffer);
+				HeapFree(GetProcessHeap(), 0, lpBuffer);
 				return 0;
 			}
 			break;
