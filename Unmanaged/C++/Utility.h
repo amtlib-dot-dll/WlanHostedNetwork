@@ -23,7 +23,7 @@ namespace WlanHostedNetwork
 		}
 
 		inline HINSTANCE getHINSTANCE(HWND hWnd) {
-			return reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE));
+			return reinterpret_cast<HINSTANCE>(GetWindowLongPtr(hWnd, GWLP_HINSTANCE));
 		}
 
 		inline MSG messageLoop() {

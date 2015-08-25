@@ -19,7 +19,7 @@ namespace WlanHostedNetwork
 					client_rect.bottom - client_rect.top,
 					hWnd,
 					nullptr,
-					reinterpret_cast<HINSTANCE>(GetWindowLong(hWnd, GWL_HINSTANCE)),
+					Utility::getHINSTANCE(hWnd),
 					nullptr);
 				SendMessage(_handle, WM_SETFONT, reinterpret_cast<WPARAM>(MainWindow::getInstance().getFont()), 0);
 				return true;
